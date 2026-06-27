@@ -37,6 +37,14 @@ hosting architecture.
 - dateparser normalizes contract dates and deadlines.
 - ReportLab generates print-ready PDF invoices.
 
+## Research and Spreadsheet Discovery Services
+
+The PubMed, news, public-company, and patent services use public web data and
+therefore require internet access while they run. NCBI requires a contact email
+for PubMed Entrez requests. The Excel flattener and category lister run fully
+locally. These services were adapted from the user's
+`teamnoether_streamlit_app` into separate, reusable Python modules.
+
 ## Tools
 
 | Tool | Script | Example |
@@ -72,6 +80,12 @@ hosting architecture.
 | SOP-to-Automation | `sop_to_automation.py` | `python sop_to_automation.py --input sop.txt --output automation_plan.json` |
 | Policy Impact Analyzer | `policy_impact_analyzer.py` | `python policy_impact_analyzer.py --input policy_change.txt --output impact.json` |
 | Activity-to-Training | `activity_to_training.py` | `python activity_to_training.py --input activity.txt --output training.json` |
+| PubMed Research Extractor | `pubmed_research.py` | Use `search_pubmed()` from Python or Streamlit |
+| Google News Search | `news_search.py` | Use `search_news()` from Python or Streamlit |
+| Company Finance Lookup | `company_finance_lookup.py` | Use `lookup_company()` from Python or Streamlit |
+| Patent Intelligence | `patent_intelligence.py` | Use `fetch_patents()` from Python or Streamlit |
+| Excel Merge Flattener | `excel_flattener.py` | Use `flatten_workbook()` from Python or Streamlit |
+| Category Lister | `category_lister.py` | Use `list_categories()` from Python or Streamlit |
 
 ## Second Batch Notes
 

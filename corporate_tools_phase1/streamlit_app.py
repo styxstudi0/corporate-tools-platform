@@ -17,6 +17,8 @@ if str(ROOT) not in sys.path:
 
 from activity_to_training import training_material
 from audit_engine import audit_package
+from category_lister import list_categories
+from company_finance_lookup import lookup_company
 from contract_analyzer import analyze_contract
 from csv_cleaner import clean_csv
 from data_cleanup_advanced import cleanup_csv
@@ -24,6 +26,7 @@ from data_extractor import extract_data
 from email_template_generator import TEMPLATES, generate_email
 from email_to_workflow import email_workflow
 from excel_reverse_engineering import analyze_workbook
+from excel_flattener import flatten_workbook
 from excel_splitter import split_excel
 from excel_to_system import plan_system
 from folder_to_knowledge_base import build_kb_plan
@@ -40,9 +43,12 @@ from invoice_matcher import invoice_match
 from invoice_to_accounting import accounting_entries
 from knowledge_assistant import answer_question, build_index
 from meeting_notes_generator import generate_notes
+from news_search import search_news
+from patent_intelligence import fetch_patents
 from pdf_suite import compress, extract_text, merge, rotate, split
 from policy_impact_analyzer import policy_impact
 from process_recorder import process_document
+from pubmed_research import search_pubmed
 from resume_formatter import resume_to_html
 from rfp_generator import rfp_response
 from sop_to_automation import sop_automation
@@ -100,6 +106,12 @@ TOOLS = {
     "Invoice Matcher": ("Finance", "Compare invoice, purchase order, and receipt values."),
     "Email Template Generator": ("Writing", "Generate reusable business email templates."),
     "File Organizer & Renamer": ("Files", "Preview organized folders and batch-renamed files."),
+    "PubMed Research Extractor": ("Research", "Find publications and institutional author contacts from PubMed."),
+    "Google News Search": ("Research", "Find recent topic and company coverage through Google News RSS."),
+    "Company Finance Lookup": ("Research", "Look up public-company symbols, exchanges, and profiles."),
+    "Patent Intelligence": ("Research", "Collect inventor, assignee, status, and PDF metadata for patents."),
+    "Excel Merge Flattener": ("Spreadsheets", "Unmerge Excel ranges and fill every cell with the merged value."),
+    "Category Lister": ("Spreadsheets", "Extract a clean, unique category list from an Excel workbook."),
     **{name: (category, description) for name, (category, description, _) in TEXT_TOOLS.items()},
 }
 
@@ -315,6 +327,48 @@ def file_preview_tool() -> None:
         st.caption("Preview mode keeps browser uploads unchanged. Server deployment can enable direct folder operations.")
 
 
+def research_tool(name: str) -> None:
+    if name == "PubMed Research Extractor":
+        query = st.text_area("PubMed query", value='("workflow automation") AND 2024:2026[Date - Publication]', height=120)
+        email = st.text_input("Contact email required by NCBI", placeholder="you@company.com")
+        countries = st.multiselect("Affiliation countries", ["United States", "USA", "United Kingdom", "India", "Canada", "Australia", "Germany", "France", "China", "Japan"], default=[])
+        limit = st.number_input("Maximum publications", min_value=10, max_value=1000, value=100, step=10)
+        if st.button("Search PubMed", type="primary", disabled=not (query.strip() and email.strip())):
+            render_result(search_pubmed(query, email, countries, limit=int(limit)))
+    elif name == "Google News Search":
+        query = st.text_input("Topic, company, or keyword", "business automation")
+        limit = st.slider("Maximum articles", 1, 30, 10)
+        if st.button("Search news", type="primary", disabled=not query.strip()):
+            render_result(search_news(query, limit))
+    elif name == "Company Finance Lookup":
+        company = st.text_input("Company name", "Microsoft")
+        if st.button("Look up company", type="primary", disabled=not company.strip()):
+            render_result(lookup_company(company))
+    else:
+        raw = st.text_area("Patent document numbers", placeholder="US12345678B2\nEP1234567A1", height=180)
+        numbers = [value.strip() for value in raw.replace(",", "\n").splitlines() if value.strip()]
+        if st.button("Fetch patents", type="primary", disabled=not numbers):
+            render_result(fetch_patents(numbers))
+
+
+def spreadsheet_discovery_tool(name: str) -> None:
+    upload = st.file_uploader("Upload Excel workbook", type=["xlsx"])
+    if upload and st.button("Flatten workbook" if name == "Excel Merge Flattener" else "Extract categories", type="primary"):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            source = save_upload(upload, folder)
+            if name == "Excel Merge Flattener":
+                output = folder / "flattened_workbook.xlsx"
+                result = flatten_workbook(source, output)
+                st.json(result)
+                st.download_button("Download flattened workbook", output.read_bytes(), output.name, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            else:
+                result = list_categories(source)
+                st.metric("Unique categories", result["category_count"])
+                st.dataframe({"Category": result["categories"]}, use_container_width=True)
+                st.download_button("Download category list", "Category\n" + "\n".join(result["categories"]), "categories.csv", "text/csv")
+
+
 with st.sidebar:
     st.title("Corporate Tools")
     st.caption("Unified testing workspace")
@@ -365,6 +419,10 @@ try:
         email_tool()
     elif selected == "File Organizer & Renamer":
         file_preview_tool()
+    elif selected in {"PubMed Research Extractor", "Google News Search", "Company Finance Lookup", "Patent Intelligence"}:
+        research_tool(selected)
+    elif selected in {"Excel Merge Flattener", "Category Lister"}:
+        spreadsheet_discovery_tool(selected)
 except Exception as exc:
     st.error(f"The tool could not complete this test: {exc}")
     st.caption("Check optional PDF, Excel, or OCR dependencies when processing those file types.")
