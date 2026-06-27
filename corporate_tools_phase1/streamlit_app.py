@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import html
 import json
 import sys
 import tempfile
@@ -60,14 +61,40 @@ st.set_page_config(page_title="Corporate Tools Lab", page_icon="CT", layout="wid
 st.markdown(
     """
     <style>
-    .stApp { background: #f4f6f8; color: #17212b; }
-    [data-testid="stSidebar"] { background: #152238; }
-    [data-testid="stSidebar"] * { color: #f7f9fb; }
+    :root {
+      --ct-surface: #ffffff;
+      --ct-surface-soft: #f4f7fa;
+      --ct-text: #17212b;
+      --ct-muted: #5d6975;
+      --ct-border: #d9e0e6;
+      --ct-sidebar: #eef3f8;
+      --ct-success: #e8f4ee;
+      --ct-success-border: #b7dcc7;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --ct-surface: #18212b;
+        --ct-surface-soft: #101820;
+        --ct-text: #f3f6f8;
+        --ct-muted: #b8c2cc;
+        --ct-border: #3a4652;
+        --ct-sidebar: #111922;
+        --ct-success: #173327;
+        --ct-success-border: #2d6a4f;
+      }
+    }
+    .stApp { background: var(--ct-surface-soft); color: var(--ct-text); }
+    [data-testid="stSidebar"] { background: var(--ct-sidebar); border-right: 1px solid var(--ct-border); }
+    [data-testid="stSidebar"] label, [data-testid="stSidebar"] h1, [data-testid="stSidebar"] p { color: var(--ct-text); }
     .tool-header { border-left: 5px solid #e35d36; padding: .2rem 0 .2rem 1rem; margin-bottom: 1rem; }
     .tool-header h1 { font-size: 2rem; margin: 0; letter-spacing: 0; }
-    .tool-header p { color: #5d6975; margin: .35rem 0 0; }
-    .status-note { background: #e8f4ee; border: 1px solid #b7dcc7; padding: .7rem .9rem; border-radius: 6px; }
-    div[data-testid="stMetric"] { background: white; border: 1px solid #d9e0e6; padding: .8rem; border-radius: 6px; }
+    .tool-header p { color: var(--ct-muted); margin: .35rem 0 0; }
+    .status-note { color: var(--ct-text); background: var(--ct-success); border: 1px solid var(--ct-success-border); padding: .7rem .9rem; border-radius: 6px; }
+    div[data-testid="stMetric"] { background: var(--ct-surface); border: 1px solid var(--ct-border); padding: .8rem; border-radius: 6px; }
+    .news-item { background: var(--ct-surface); border: 1px solid var(--ct-border); border-radius: 6px; padding: .85rem 1rem; margin-bottom: .6rem; }
+    .news-item a { color: #2f80ed; font-weight: 650; text-decoration: none; }
+    .news-item a:hover { text-decoration: underline; }
+    .news-meta { color: var(--ct-muted); font-size: .85rem; margin-top: .3rem; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -133,6 +160,29 @@ def render_result(data: object) -> None:
     else:
         st.text_area("Result", str(data), height=360)
         st.download_button("Download result", str(data), "result.txt", "text/plain")
+
+
+def table_downloads(records: list[dict], basename: str, link_columns: dict[str, str] | None = None) -> None:
+    import pandas as pd
+
+    frame = pd.DataFrame(records)
+    if frame.empty:
+        st.info("No matching records were returned. Try broadening the query or filters.")
+        return
+    column_config = {column: st.column_config.LinkColumn(label) for column, label in (link_columns or {}).items() if column in frame.columns}
+    st.dataframe(frame, use_container_width=True, hide_index=True, column_config=column_config)
+    excel = io.BytesIO()
+    with pd.ExcelWriter(excel, engine="xlsxwriter") as writer:
+        frame.to_excel(writer, index=False, sheet_name="Results")
+        worksheet = writer.sheets["Results"]
+        for index, column in enumerate(frame.columns):
+            width = min(max(len(str(column)) + 2, frame[column].astype(str).map(len).max() + 2), 55)
+            worksheet.set_column(index, index, width)
+    excel.seek(0)
+    excel_col, csv_col, json_col = st.columns(3)
+    excel_col.download_button("Download Excel", excel.getvalue(), f"{basename}.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
+    csv_col.download_button("Download CSV", frame.to_csv(index=False), f"{basename}.csv", "text/csv", use_container_width=True)
+    json_col.download_button("Download JSON", frame.to_json(orient="records", indent=2), f"{basename}.json", "application/json", use_container_width=True)
 
 
 def text_tool(name: str) -> None:
@@ -334,21 +384,55 @@ def research_tool(name: str) -> None:
         countries = st.multiselect("Affiliation countries", ["United States", "USA", "United Kingdom", "India", "Canada", "Australia", "Germany", "France", "China", "Japan"], default=[])
         limit = st.number_input("Maximum publications", min_value=10, max_value=1000, value=100, step=10)
         if st.button("Search PubMed", type="primary", disabled=not (query.strip() and email.strip())):
-            render_result(search_pubmed(query, email, countries, limit=int(limit)))
+            with st.status("Searching PubMed and preparing the table...", expanded=False) as status:
+                result = search_pubmed(query, email, countries, limit=int(limit))
+                status.update(label=f"Found {result['result_count']} author records", state="complete")
+            records = result["records"]
+            for record in records:
+                record["pubmed_url"] = f"https://pubmed.ncbi.nlm.nih.gov/{record['pmid']}/" if record.get("pmid") else ""
+                record["doi_url"] = f"https://doi.org/{record['doi']}" if record.get("doi") else ""
+            count_col, article_col, institution_col = st.columns(3)
+            count_col.metric("Author records", len(records))
+            article_col.metric("Unique articles", len({item.get("pmid") for item in records}))
+            institution_col.metric("Institutions", len({item.get("institution") for item in records}))
+            results_tab, raw_tab = st.tabs(["Results table", "Raw response"])
+            with results_tab:
+                table_downloads(records, "pubmed_results", {"pubmed_url": "PubMed", "doi_url": "DOI"})
+            with raw_tab:
+                st.json(result, expanded=False)
     elif name == "Google News Search":
         query = st.text_input("Topic, company, or keyword", "business automation")
         limit = st.slider("Maximum articles", 1, 30, 10)
         if st.button("Search news", type="primary", disabled=not query.strip()):
-            render_result(search_news(query, limit))
+            with st.spinner("Finding recent coverage..."):
+                result = search_news(query, limit)
+            articles = result["articles"]
+            st.success(f"Found {len(articles)} articles for {query}.")
+            links_tab, table_tab = st.tabs(["Clickable articles", "Export table"])
+            with links_tab:
+                for article in articles:
+                    title = html.escape(article.get("title", "Untitled article"))
+                    link = html.escape(article.get("link", ""), quote=True)
+                    source = html.escape(article.get("source", ""))
+                    published = html.escape(article.get("published", ""))
+                    st.markdown(f'<div class="news-item"><a href="{link}" target="_blank">{title}</a><div class="news-meta">{source} &nbsp; {published}</div></div>', unsafe_allow_html=True)
+            with table_tab:
+                table_downloads(articles, "google_news_results", {"link": "Open article"})
     elif name == "Company Finance Lookup":
         company = st.text_input("Company name", "Microsoft")
         if st.button("Look up company", type="primary", disabled=not company.strip()):
-            render_result(lookup_company(company))
+            with st.spinner("Looking up public company data..."):
+                result = lookup_company(company)
+            table_downloads(result["matches"], "company_lookup")
+            with st.expander("Top company profile"):
+                st.json(result["top_company_profile"], expanded=False)
     else:
         raw = st.text_area("Patent document numbers", placeholder="US12345678B2\nEP1234567A1", height=180)
         numbers = [value.strip() for value in raw.replace(",", "\n").splitlines() if value.strip()]
         if st.button("Fetch patents", type="primary", disabled=not numbers):
-            render_result(fetch_patents(numbers))
+            with st.spinner("Collecting public patent metadata..."):
+                result = fetch_patents(numbers)
+            table_downloads(result["patents"], "patent_intelligence", {"pdf": "Patent PDF"})
 
 
 def spreadsheet_discovery_tool(name: str) -> None:
