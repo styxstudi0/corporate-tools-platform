@@ -19,13 +19,45 @@ class ExtractedRecord:
 
 
 def extract_text_from_pdf(file_path: Path) -> str:
+    """Extract layout-aware text with PyMuPDF, falling back to pypdf."""
     try:
-        from pypdf import PdfReader
-    except ImportError as exc:
-        raise SystemExit("Missing dependency for PDF extraction: pip install pypdf") from exc
+        import fitz
 
-    reader = PdfReader(str(file_path))
-    return "\n".join(page.extract_text() or "" for page in reader.pages)
+        with fitz.open(file_path) as document:
+            return "\n".join(page.get_text("text", sort=True) for page in document)
+    except ImportError:
+        try:
+            from pypdf import PdfReader
+        except ImportError as exc:
+            raise SystemExit("Missing PDF dependency: pip install pymupdf pypdf") from exc
+
+        reader = PdfReader(str(file_path))
+        return "\n".join(page.extract_text() or "" for page in reader.pages)
+
+
+def extract_pdf_tables(file_path: Path) -> list[ExtractedRecord]:
+    """Extract table cells as searchable records using pdfplumber."""
+    try:
+        import pdfplumber
+    except ImportError:
+        return []
+
+    records: list[ExtractedRecord] = []
+    with pdfplumber.open(file_path) as document:
+        for page_number, page in enumerate(document.pages, 1):
+            for table_number, table in enumerate(page.extract_tables(), 1):
+                for row_number, row in enumerate(table or [], 1):
+                    values = [str(cell).strip() for cell in row if cell not in (None, "")]
+                    if values:
+                        records.append(
+                            ExtractedRecord(
+                                file_path.name,
+                                "table",
+                                f"page_{page_number}_table_{table_number}_row_{row_number}",
+                                " | ".join(values),
+                            )
+                        )
+    return records
 
 
 def extract_text_from_image(file_path: Path) -> str:
@@ -116,6 +148,8 @@ def extract_data(input_paths: list[Path], output_file: Path, output_format: str)
         for file_path in files:
             if file_path.is_file():
                 records.extend(extract_fields(file_path, extract_text(file_path)))
+                if file_path.suffix.lower() == ".pdf":
+                    records.extend(extract_pdf_tables(file_path))
 
     output_file.parent.mkdir(parents=True, exist_ok=True)
     if output_format == "json":
@@ -141,4 +175,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

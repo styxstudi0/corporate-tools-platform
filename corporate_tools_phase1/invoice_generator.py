@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import html
 import json
+from io import BytesIO
 from decimal import Decimal
 from pathlib import Path
 
@@ -78,6 +79,54 @@ def generate_invoice(data: dict) -> str:
 """
 
 
+def generate_invoice_pdf(data: dict) -> bytes:
+    """Generate a print-ready PDF invoice using ReportLab."""
+    try:
+        from reportlab.lib import colors
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.styles import getSampleStyleSheet
+        from reportlab.lib.units import mm
+        from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+    except ImportError as exc:
+        raise RuntimeError("PDF invoices require reportlab") from exc
+
+    items = data.get("items", [])
+    tax_rate = Decimal(str(data.get("tax_rate", 0)))
+    subtotal = sum(Decimal(str(item.get("quantity", 1))) * Decimal(str(item.get("unit_price", 0))) for item in items)
+    tax = subtotal * tax_rate
+    total = subtotal + tax
+    buffer = BytesIO()
+    document = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=18 * mm, leftMargin=18 * mm, topMargin=18 * mm, bottomMargin=18 * mm)
+    styles = getSampleStyleSheet()
+    story = [
+        Paragraph("INVOICE", styles["Title"]),
+        Paragraph(f"<b>{data.get('business_name', 'Business')}</b><br/>{data.get('business_address', '')}", styles["BodyText"]),
+        Spacer(1, 8 * mm),
+        Paragraph(f"Invoice #: {data.get('invoice_number', 'N/A')}<br/>Date: {data.get('date', 'N/A')}<br/><br/><b>Bill To</b><br/>{data.get('client_name', 'Client')}<br/>{data.get('client_address', '')}", styles["BodyText"]),
+        Spacer(1, 8 * mm),
+    ]
+    rows = [["Description", "Qty", "Unit Price", "Amount"]]
+    for item in items:
+        quantity = Decimal(str(item.get("quantity", 1)))
+        unit_price = Decimal(str(item.get("unit_price", 0)))
+        rows.append([str(item.get("description", "Item")), money(quantity), money(unit_price), money(quantity * unit_price)])
+    rows.extend([["", "", "Subtotal", money(subtotal)], ["", "", "Tax", money(tax)], ["", "", "Total", money(total)]])
+    table = Table(rows, colWidths=[85 * mm, 22 * mm, 30 * mm, 30 * mm])
+    table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#152238")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("ALIGN", (1, 1), (-1, -1), "RIGHT"),
+        ("GRID", (0, 0), (-1, -4), 0.5, colors.HexColor("#d9e0e6")),
+        ("FONTNAME", (2, -1), (-1, -1), "Helvetica-Bold"),
+        ("LINEABOVE", (2, -1), (-1, -1), 1.2, colors.HexColor("#152238")),
+        ("PADDING", (0, 0), (-1, -1), 7),
+    ]))
+    story.append(table)
+    document.build(story)
+    return buffer.getvalue()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate an invoice HTML file from JSON.")
     parser.add_argument("input", type=Path, help="JSON invoice data")
@@ -93,4 +142,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

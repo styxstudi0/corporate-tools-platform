@@ -35,7 +35,7 @@ from hr_toolkit import (
     generate_questions,
     parse_resume,
 )
-from invoice_generator import generate_invoice
+from invoice_generator import generate_invoice, generate_invoice_pdf
 from invoice_matcher import invoice_match
 from invoice_to_accounting import accounting_entries
 from knowledge_assistant import answer_question, build_index
@@ -275,8 +275,11 @@ def invoice_generator_tool() -> None:
     if st.button("Generate invoice", type="primary"):
         data = {"invoice_number": number, "date": str(date), "business_name": business, "client_name": client, "tax_rate": tax, "items": [{"description": description, "quantity": quantity, "unit_price": price}]}
         html = generate_invoice(data)
+        pdf = generate_invoice_pdf(data)
         st.components.v1.html(html, height=620, scrolling=True)
-        st.download_button("Download invoice", html, f"{number}.html", "text/html")
+        html_col, pdf_col = st.columns(2)
+        html_col.download_button("Download HTML", html, f"{number}.html", "text/html")
+        pdf_col.download_button("Download PDF", pdf, f"{number}.pdf", "application/pdf")
 
 
 def invoice_matcher_tool() -> None:

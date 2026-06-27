@@ -29,6 +29,14 @@ document extraction, local knowledge search, HR generators, invoices, and
 downloadable results. It is a local testing surface, not the final production
 hosting architecture.
 
+### Local enhancement stack
+
+- PyMuPDF and pdfplumber provide layout-aware PDF text and table extraction.
+- pandas and DuckDB provide fast column-level data profiling.
+- email-validator, phonenumbers, and RapidFuzz improve validation and duplicate detection.
+- dateparser normalizes contract dates and deadlines.
+- ReportLab generates print-ready PDF invoices.
+
 ## Tools
 
 | Tool | Script | Example |

@@ -19,6 +19,17 @@ def analyze_contract(text: str) -> dict:
     )
     report["obligations"] = [item.strip() for item in obligation_phrases[:30]]
     report["deadlines"] = extract_dates(text)
+    try:
+        from dateparser.search import search_dates
+
+        matches = search_dates(text, settings={"PREFER_DATES_FROM": "future"}) or []
+        report["normalized_dates"] = [
+            {"source_text": source, "iso_date": parsed.date().isoformat()}
+            for source, parsed in matches[:30]
+            if len(source.strip()) >= 4
+        ]
+    except ImportError:
+        report["normalized_dates"] = []
     report["risk_terms"] = risk_terms
     return report
 
@@ -32,4 +43,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
