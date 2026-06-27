@@ -61,40 +61,103 @@ st.set_page_config(page_title="Corporate Tools Lab", page_icon="CT", layout="wid
 st.markdown(
     """
     <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&family=Sora:wght@500;600;700&display=swap');
     :root {
+      --ct-page: #f5f7fb;
+      --ct-sidebar: #ffffff;
       --ct-surface: #ffffff;
-      --ct-surface-soft: #f4f7fa;
-      --ct-text: #17212b;
-      --ct-muted: #5d6975;
-      --ct-border: #d9e0e6;
-      --ct-sidebar: #eef3f8;
-      --ct-success: #e8f4ee;
-      --ct-success-border: #b7dcc7;
+      --ct-surface-2: #f1f4f9;
+      --ct-surface-3: #e8edf5;
+      --ct-text: #172033;
+      --ct-secondary: #58677e;
+      --ct-muted: #7e8ba0;
+      --ct-border: #dce3ed;
+      --ct-border-strong: #c6d0df;
+      --ct-accent: #5b5fe9;
+      --ct-accent-light: #4f52c9;
+      --ct-accent-bg: #ececff;
+      --ct-success: #0d7654;
+      --ct-success-bg: #e8f7f1;
+      --ct-amber: #a46300;
+      --ct-amber-bg: #fff7dc;
     }
     @media (prefers-color-scheme: dark) {
       :root {
-        --ct-surface: #18212b;
-        --ct-surface-soft: #101820;
-        --ct-text: #f3f6f8;
-        --ct-muted: #b8c2cc;
-        --ct-border: #3a4652;
-        --ct-sidebar: #111922;
-        --ct-success: #173327;
-        --ct-success-border: #2d6a4f;
+        --ct-page: #0b1120;
+        --ct-sidebar: #0a0e1a;
+        --ct-surface: #111a2e;
+        --ct-surface-2: #16213a;
+        --ct-surface-3: #1c2740;
+        --ct-text: #f1f5f9;
+        --ct-secondary: #94a3b8;
+        --ct-muted: #697895;
+        --ct-border: #22304d;
+        --ct-border-strong: #2e3f63;
+        --ct-accent: #6366f1;
+        --ct-accent-light: #a5a8f5;
+        --ct-accent-bg: #1a1b3d;
+        --ct-success: #6ee7b7;
+        --ct-success-bg: #0d2a22;
+        --ct-amber: #fbbf24;
+        --ct-amber-bg: #2e2410;
       }
     }
-    .stApp { background: var(--ct-surface-soft); color: var(--ct-text); }
+    * { letter-spacing: 0; }
+    html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
+    .stApp { background: var(--ct-page); color: var(--ct-text); }
+    header[data-testid="stHeader"] { background: transparent; }
+    .block-container { max-width: 1180px; padding: 2.2rem 2.5rem 4rem; }
+
     [data-testid="stSidebar"] { background: var(--ct-sidebar); border-right: 1px solid var(--ct-border); }
-    [data-testid="stSidebar"] label, [data-testid="stSidebar"] h1, [data-testid="stSidebar"] p { color: var(--ct-text); }
-    .tool-header { border-left: 5px solid #e35d36; padding: .2rem 0 .2rem 1rem; margin-bottom: 1rem; }
-    .tool-header h1 { font-size: 2rem; margin: 0; letter-spacing: 0; }
-    .tool-header p { color: var(--ct-muted); margin: .35rem 0 0; }
-    .status-note { color: var(--ct-text); background: var(--ct-success); border: 1px solid var(--ct-success-border); padding: .7rem .9rem; border-radius: 6px; }
-    div[data-testid="stMetric"] { background: var(--ct-surface); border: 1px solid var(--ct-border); padding: .8rem; border-radius: 6px; }
-    .news-item { background: var(--ct-surface); border: 1px solid var(--ct-border); border-radius: 6px; padding: .85rem 1rem; margin-bottom: .6rem; }
-    .news-item a { color: #2f80ed; font-weight: 650; text-decoration: none; }
+    [data-testid="stSidebar"] > div:first-child { padding: 1.7rem 1.15rem; }
+    [data-testid="stSidebar"] label, [data-testid="stSidebar"] p { color: var(--ct-secondary); }
+    .ct-brand { margin-bottom: 1.4rem; }
+    .ct-brand strong { display: block; color: var(--ct-text); font: 700 1.18rem 'Sora', sans-serif; }
+    .ct-brand span { color: var(--ct-muted); font-size: .78rem; }
+
+    div[data-baseweb="input"], div[data-baseweb="select"] > div {
+      background: var(--ct-surface-2); border-color: var(--ct-border); border-radius: 10px;
+    }
+    div[data-baseweb="input"] input, div[data-baseweb="select"] * { color: var(--ct-text); }
+    div[data-baseweb="input"]:focus-within, div[data-baseweb="select"] > div:focus-within {
+      border-color: var(--ct-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ct-accent) 20%, transparent);
+    }
+
+    .tool-header { position: relative; padding: .1rem 0 .1rem 1.35rem; margin: .5rem 0 1.7rem; animation: ctBoot .45s ease both; }
+    .tool-header::before { content: ''; position: absolute; inset: 2px auto 2px 0; width: 4px; border-radius: 3px; background: linear-gradient(180deg, var(--ct-accent), #8b5cf6); animation: railPulse 4s ease-in-out infinite; }
+    .tool-header h1 { color: var(--ct-text); font: 700 1.9rem 'Sora', sans-serif; margin: 0; }
+    .tool-header p { color: var(--ct-secondary); font-size: .92rem; margin: .45rem 0 0; max-width: 620px; }
+    @keyframes ctBoot { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    @keyframes railPulse { 50% { filter: brightness(1.35); } }
+
+    .status-note { color: var(--ct-secondary); background: var(--ct-amber-bg); border: 1px solid color-mix(in srgb, var(--ct-amber) 34%, transparent); padding: .8rem; border-radius: 10px; font-size: .76rem; }
+    .status-note strong { color: var(--ct-amber); }
+    div[data-testid="stMetric"] { background: var(--ct-surface); border: 1px solid var(--ct-border); padding: 1rem 1.15rem; border-radius: 12px; transition: border-color .2s ease, transform .2s ease; }
+    div[data-testid="stMetric"]:hover { border-color: var(--ct-border-strong); transform: translateY(-1px); }
+    div[data-testid="stMetric"] label { color: var(--ct-muted); text-transform: uppercase; font-size: .72rem; }
+    div[data-testid="stMetricValue"] { color: var(--ct-text); font-family: 'JetBrains Mono', monospace; }
+
+    .st-key-tool_panel { background: var(--ct-surface); border: 1px solid var(--ct-border) !important; border-radius: 14px !important; padding: 1.45rem 1.55rem; margin-top: 1.55rem; }
+    .stButton > button, .stDownloadButton > button { border-radius: 10px; border: 1px solid var(--ct-border-strong); transition: transform .12s ease, box-shadow .15s ease, border-color .15s ease; }
+    .stButton > button[kind="primary"] { background: var(--ct-accent); color: white; border-color: var(--ct-accent); }
+    .stButton > button:hover, .stDownloadButton > button:hover { border-color: var(--ct-accent); box-shadow: 0 4px 16px color-mix(in srgb, var(--ct-accent) 25%, transparent); }
+    .stButton > button:active, .stDownloadButton > button:active { transform: scale(.98); }
+    [data-baseweb="tab-list"] { border-bottom: 1px solid var(--ct-border); gap: 1.3rem; }
+    [data-baseweb="tab"] { color: var(--ct-muted); }
+    [aria-selected="true"][data-baseweb="tab"] { color: var(--ct-text); }
+    [data-testid="stDataFrame"], [data-testid="stFileUploaderDropzone"] { border-color: var(--ct-border); border-radius: 10px; }
+
+    .news-item { background: var(--ct-surface); border: 1px solid var(--ct-border); border-radius: 12px; padding: 1rem 1.1rem; margin-bottom: .65rem; transition: border-color .18s ease, background .18s ease, transform .18s ease; animation: ctBoot .35s ease both; }
+    .news-item:hover { border-color: var(--ct-accent); background: var(--ct-surface-2); transform: translateX(3px); }
+    .news-item a { color: var(--ct-accent-light); font-weight: 600; text-decoration: none; }
     .news-item a:hover { text-decoration: underline; }
-    .news-meta { color: var(--ct-muted); font-size: .85rem; margin-top: .3rem; }
+    .news-meta { color: var(--ct-muted); font: .72rem 'JetBrains Mono', monospace; margin-top: .4rem; }
+
+    @media (max-width: 760px) {
+      .block-container { padding: 1.5rem 1rem 3rem; }
+      .tool-header h1 { font-size: 1.5rem; }
+      .st-key-tool_panel { padding: 1rem; }
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -454,8 +517,7 @@ def spreadsheet_discovery_tool(name: str) -> None:
 
 
 with st.sidebar:
-    st.title("Corporate Tools")
-    st.caption("Unified testing workspace")
+    st.markdown("<div class='ct-brand'><strong>Corporate Tools</strong><span>Unified testing workspace</span></div>", unsafe_allow_html=True)
     search = st.text_input("Search tools", placeholder="invoice, PDF, HR...")
     categories = ["All"] + sorted({category for category, _ in TOOLS.values()})
     category = st.selectbox("Category", categories)
@@ -474,39 +536,39 @@ metric1, metric2, metric3 = st.columns(3)
 metric1.metric("Available tools", len(TOOLS))
 metric2.metric("Category", group)
 metric3.metric("Runtime", "Local Python")
-st.divider()
 
-try:
-    if selected in TEXT_TOOLS:
-        text_tool(selected)
-    elif selected in {"CSV Cleaner", "Advanced Data Cleanup"}:
-        csv_tools(selected)
-    elif selected in {"Excel Splitter", "Excel Reverse Engineering", "Excel-to-System"}:
-        excel_tools(selected)
-    elif selected == "PDF Suite":
-        pdf_tool()
-    elif selected == "Data Extractor":
-        extraction_tool()
-    elif selected == "Knowledge Assistant":
-        knowledge_tool()
-    elif selected == "Folder-to-Knowledge Base":
-        knowledge_tool(plan_only=True)
-    elif selected in {"Meeting Notes Generator", "Grammar Checker", "Resume Formatter"}:
-        writing_tool(selected)
-    elif selected == "HR Toolkit":
-        hr_tool()
-    elif selected == "Invoice Generator":
-        invoice_generator_tool()
-    elif selected == "Invoice Matcher":
-        invoice_matcher_tool()
-    elif selected == "Email Template Generator":
-        email_tool()
-    elif selected == "File Organizer & Renamer":
-        file_preview_tool()
-    elif selected in {"PubMed Research Extractor", "Google News Search", "Company Finance Lookup", "Patent Intelligence"}:
-        research_tool(selected)
-    elif selected in {"Excel Merge Flattener", "Category Lister"}:
-        spreadsheet_discovery_tool(selected)
-except Exception as exc:
-    st.error(f"The tool could not complete this test: {exc}")
-    st.caption("Check optional PDF, Excel, or OCR dependencies when processing those file types.")
+with st.container(border=True, key="tool_panel"):
+    try:
+        if selected in TEXT_TOOLS:
+            text_tool(selected)
+        elif selected in {"CSV Cleaner", "Advanced Data Cleanup"}:
+            csv_tools(selected)
+        elif selected in {"Excel Splitter", "Excel Reverse Engineering", "Excel-to-System"}:
+            excel_tools(selected)
+        elif selected == "PDF Suite":
+            pdf_tool()
+        elif selected == "Data Extractor":
+            extraction_tool()
+        elif selected == "Knowledge Assistant":
+            knowledge_tool()
+        elif selected == "Folder-to-Knowledge Base":
+            knowledge_tool(plan_only=True)
+        elif selected in {"Meeting Notes Generator", "Grammar Checker", "Resume Formatter"}:
+            writing_tool(selected)
+        elif selected == "HR Toolkit":
+            hr_tool()
+        elif selected == "Invoice Generator":
+            invoice_generator_tool()
+        elif selected == "Invoice Matcher":
+            invoice_matcher_tool()
+        elif selected == "Email Template Generator":
+            email_tool()
+        elif selected == "File Organizer & Renamer":
+            file_preview_tool()
+        elif selected in {"PubMed Research Extractor", "Google News Search", "Company Finance Lookup", "Patent Intelligence"}:
+            research_tool(selected)
+        elif selected in {"Excel Merge Flattener", "Category Lister"}:
+            spreadsheet_discovery_tool(selected)
+    except Exception as exc:
+        st.error(f"The tool could not complete this test: {exc}")
+        st.caption("Check optional PDF, Excel, or OCR dependencies when processing those file types.")
