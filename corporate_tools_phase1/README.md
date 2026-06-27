@@ -15,6 +15,20 @@ pip install -r requirements.txt
 
 Most text/CSV tools use only the Python standard library.
 
+## Streamlit Test Workspace
+
+Run every current service from one browser interface while the product is in
+MVP development:
+
+```bash
+streamlit run streamlit_app.py
+```
+
+The app supports interactive text tools, CSV and Excel uploads, PDF operations,
+document extraction, local knowledge search, HR generators, invoices, and
+downloadable results. It is a local testing surface, not the final production
+hosting architecture.
+
 ## Tools
 
 | Tool | Script | Example |
